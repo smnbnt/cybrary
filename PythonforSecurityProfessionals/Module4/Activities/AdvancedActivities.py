@@ -13,12 +13,24 @@ def python_message_box(title = '' , body = ''):
 '''2.2 Ctypes: Write a function which takes two arguments, filename and
 data and creates a file with that data written to it'''
 def python_create_file(filename = '' , data = ''):
+    kernel32 = windll.LoadLibrary("kernel32")
+    file_handle = kernel32.CreateFileA(filename, 0x10000000, 0, 0, 4, 0x80, 0)
+    written_data = c_int(0)
+    kernel32.WriteFile(file_handle, data, len(data), byref(written_data), 0)
+    kernel32.CloseHandle(file_handle)
     return
     
 
 '''2.3 Ctypes: Write a function which takes one argument, a filename,
 and prints the data from that file'''
 def python_read_file(filename = ''):
+    kernel32 = windll.LoadLibrary("kernel32")
+    file_handle = kernel32.CreateFileA(filename, 0x10000000, 0, 0, 4, 0x80, 0)
+    data = create_string_buffer(4096)
+    read_data = c_int(0)
+    kernel32.ReadFile(file_handle, byref(data), 4096, byref(read_data), 0)
+    print data.value
+    kernel32.CloseHandle(file_handle)
     return
 
 '''2.4 Regex: Write a regular expression to search a data block for a 
@@ -51,11 +63,17 @@ def monty_python(data):
 '''2.7 Multi-threading: Write a function which runs this entire program,
 each function getting its own thread.'''
 def multiple_threads():
-    function_list = [regex_html,
+    function_list = [python_message_box,
+                     python_create_file,
+                     python_read_file,
+                     regex_html,
                      regex_phone,
                      monty_python]
 
-    args_list = [("foiewnjewnfjkmn<color=blue>fuiaenjned",),
+    args_list = [("Hello World", "NOT"),
+                 ("Test.txt", "Salut"),
+                 ("Test.txt",),
+                 ("foiewnjewnfjkmn<color=blue>fuiaenjned",),
                  ("ifnekjfnwekjf(888) 888-8888jdnekjdnwk",),
                  ("Nobody expects",)]
 
@@ -66,6 +84,7 @@ def multiple_threads():
 
     for i in threads_list:
         i.start()
+        sleep(1)
 
     return
 
